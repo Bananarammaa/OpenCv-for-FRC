@@ -3,6 +3,10 @@ import cv2
 import numpy as np
 from networktables import NetworkTable
 import logging
+import base64
+import time
+import urllib2
+import urllib
 logging.basicConfig(level=logging.DEBUG)
 
 from datetime import datetime
@@ -12,21 +16,26 @@ import time
 # network table setup
 
 #commented out for testing
-NetworkTable.setIPAddress("localhost")#127.0.0.1 with tester program
+NetworkTable.setIPAddress("10.13.39.2")#127.0.0.1 with tester program
 NetworkTable.setClientMode()
 NetworkTable.initialize()
 sd = NetworkTable.getTable("SmartDashboard")
 
-# VideoCapture webcam id=0,1,2,3...
+#cap = cv2.VideoCapture()
+#cap.open("http://10.13.39.10/mjpg/video.mjpg");
+
 vc = cv2.VideoCapture(0)
+#vc = cv2.VideoCapture("http://10.13.39.10/mjpg/video.mjpg")
 #videoCapture = cv2.VideoCapture()
-#videoCapture.open("10.14.3.24/mjpg/video.mjpg")
+#videoCapture.open("http://10.13.39.10/mjpg/video.mjpg")
+#rval, live = videoCapture.read()#camera feed
 
 # try to get the first frame
 if vc.isOpened():
     rval, src = vc.read()
 else:
     rval = False
+testIP = True
 
 '''
 vc.set(cv2.CAP_PROP_FRAME_WIDTH,320)
@@ -43,7 +52,16 @@ i = 0
 j = 0
 found = False
 #Loop to process video
+'''while tval:
+    tval, live = videoCapture.read()
+    cv2.imshow("live", live)
+'''
+
+stream=urllib.urlopen('http://10.13.39.10/mjpg/video.mjpg')
+bytes=''
+
 while rval:
+    testIP = True
     # Compute FPS information
     time_end = time.time()
     times[time_idx] = time_end - time_start
@@ -57,11 +75,29 @@ while rval:
     #value to alter
     thrval = 120
 
-    #rval, src = vc.read()#camera feed
-    src = cv2.imread("/Users/Joseph/Desktop/tower.png")#image file
+    while (testIP):
+        bytes+=stream.read(1024)
+        a = bytes.find('\xff\xd8')
+        b = bytes.find('\xff\xd9')
+        if a!=-1 and b!=-1:
+            jpg = bytes[a:b+2]
+            bytes= bytes[b+2:]
+            live = cv2.imdecode(np.fromstring(jpg, dtype=np.uint8),cv2.CV_LOAD_IMAGE_COLOR)
+            testIP = False
 
+
+
+
+    rval, web = vc.read()#camera feed
+
+    #src = cv2.imread("/Users/Joseph/Desktop/tower.png")#image file
+    #src = web
+    src = live
     # convert the image to grayscale and threshold it
+
+    #gray = cv2.cvtColor(src, cv2.COLOR_BGR2GRAY)
     gray = cv2.cvtColor(src, cv2.COLOR_BGR2GRAY)
+
     #gray = cv2.cvtColor(src, cv2.COLOR_BGR2HLS)
     #cv2.imshow("gray",gray)
 
@@ -84,19 +120,28 @@ while rval:
     #cv2.imshow("hsv", mask)
     #blur = cv2.blur(mask,(5,5))
     edges = cv2.Canny(mask, 100,200)
-    #cv2.imshow("edges",edges)
+
+
     try:
+        #cv2.imshow("live",src)
+
         # find the contours and keep the largest one
         #(_,cnts, _) = cv2.findContours(edges, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE) #used to be thr
         cnts,hierarchy = cv2.findContours(edges,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
         cv2.drawContours(src,cnts,-1,(255,105,180),3)
         cnt = cnts[i]#11
         area = cv2.contourArea(cnt)
-        while area < 100:
+
+
+        while area > 100:
             print 'contour', i, 'is ', area, 'big'
             i = i+1
+            if (i>100):
+                i=0
             cnt = cnts[i]
             area = cv2.contourArea(cnt)
+
+
         M = cv2.moments(cnt)
         cx = int(M['m10']/M['m00'])
         cy = int(M['m01']/M['m00'])
@@ -132,7 +177,7 @@ while rval:
         sd.putNumber('COG_X', (x+w/2))
         print('SendingY... ', (y+h/2))
         sd.putNumber('COG_Y', (y+h/2))
-
+        sd.putNumber('DOES WORK', 69)
         '''
         moments = cv.Moments(cv.fromarray(edges),i)
         area = cv.GetCentralMoment(moments, 0, 0)
