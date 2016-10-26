@@ -19,6 +19,8 @@ sd = NetworkTable.getTable("SmartDashboard")
 
 # VideoCapture webcam id=0,1,2,3...
 vc = cv2.VideoCapture(0)
+#videoCapture = cv2.VideoCapture()
+#videoCapture.open("10.14.3.24/mjpg/video.mjpg")
 
 # try to get the first frame
 if vc.isOpened():
@@ -160,8 +162,11 @@ while rval:
         key = cv2.waitKey(20)
         if key == 27:
             break
-    except:
+    except Exception as e:
+        print (e)
         print('an error has occured')
+    #except:
+    #    print('an error has occured')
 
     # display image
     cv2.imshow("src", src)
